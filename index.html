@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>程湛华 | 超级个体HR · 人力资源</title>
+  <meta name="description" content="程湛华，专注AI+HR全流程落地，招聘自动化·绩效管理·员工关系，六模块独立统筹" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:  '#eff6ff',
+              100: '#dbeafe',
+              500: '#1d4ed8',
+              600: '#1e40af',
+              700: '#1e3a8a',
+              900: '#1e293b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    .gradient-brand { background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 50%, #2563eb 100%); }
+    .gradient-text { background: linear-gradient(135deg, #1e40af, #2563eb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(30,64,175,0.15); }
+    .section-divider { background: linear-gradient(90deg, transparent, #1d4ed8, transparent); height: 1px; }
+    .skill-tag { transition: all 0.15s; }
+    .skill-tag:hover { background: #1e40af; color: white; }
+  </style>
+</head>
+<body class="bg-white text-brand-900 font-sans">
+
+  <!-- ===== NAV ===== -->
+  <nav class="fixed top-0 w-full bg-white/90 backdrop-blur-md border-b border-blue-100 z-50">
+    <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="font-bold text-xl text-brand-700">程湛华</div>
+      <div class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
+        <a href="#about"    class="hover:text-brand-600 transition">关于我</a>
+        <a href="#experience" class="hover:text-brand-600 transition">工作经历</a>
+        <a href="#projects" class="hover:text-brand-600 transition">项目成果</a>
+        <a href="#skills"   class="hover:text-brand-600 transition">技能工具</a>
+        <a href="#contact"  class="hover:text-brand-600 transition">联系方式</a>
+      </div>
+      <a href="#contact"
+         class="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-5 py-2 rounded-full transition">
+        联系我
+      </a>
+    </div>
+  </nav>
+
+  <!-- ===== HERO ===== -->
+  <header class="gradient-brand text-white pt-40 pb-28 px-6">
+    <div class="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+      <div>
+        <p class="text-blue-200 text-sm font-semibold tracking-widest uppercase mb-3">求职方向 · 人力资源专员</p>
+        <h1 class="text-4xl md:text-5xl font-extrabold leading-tight mb-4">
+          程湛华<br/>
+          <span class="text-blue-200">超级个体HR</span>
+        </h1>
+        <p class="text-blue-100 text-base leading-relaxed mb-2">
+          AI + HR 六模块全流程落地 &nbsp;·&nbsp; 招聘自动化 · 绩效体系 · 员工关系
+        </p>
+        <p class="text-blue-300 text-sm mb-8">
+          数字太空HR专员 &nbsp;|&nbsp; 北京 &nbsp;|&nbsp; 26岁
+        </p>
+        <div class="flex flex-wrap gap-4">
+          <a href="file:///Users/chengchen/Desktop/程湛华_人力资源简历pdf.pdf"
+             download="程湛华_人力资源简历.pdf"
+             class="bg-white text-brand-700 font-bold px-7 py-3 rounded-full hover:bg-blue-50 transition shadow-lg">
+            📄 下载简历
+          </a>
+          <a href="#contact"
+             class="border-2 border-white/50 text-white font-semibold px-7 py-3 rounded-full hover:bg-white/10 transition">
+            联系方式
+          </a>
+        </div>
+      </div>
+      <div class="flex justify-center">
+        <div class="relative">
+          <div class="w-52 h-52 rounded-full bg-white/10 backdrop-blur flex items-center justify-center text-7xl">
+            👤
+          </div>
+          <div class="absolute -bottom-4 -right-4 bg-white text-brand-700 text-sm font-bold px-4 py-2 rounded-lg shadow-lg">
+            🔍 AI + HR
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="section-divider max-w-5xl mx-auto"></div>
+
+  <!-- ===== ABOUT ===== -->
+  <section id="about" class="py-20 px-6">
+    <div class="max-w-5xl mx-auto">
+      <p class="text-brand-500 font-bold tracking-widest uppercase text-sm mb-2">About Me</p>
+      <h2 class="text-3xl font-extrabold mb-10">关于我</h2>
+      <div class="grid md:grid-cols-2 gap-10">
+
+        <div>
+          <h3 class="font-bold text-lg mb-4 text-brand-700">基本信息</h3>
+          <table class="w-full text-sm text-gray-700">
+            <tbody>
+              <tr class="border-b border-blue-50"><td class="py-2 text-gray-500 w-28">姓名</td><td class="py-2 font-semibold">程湛华</td></tr>
+              <tr class="border-b border-blue-50"><td class="py-2 text-gray-500">年龄</td><td class="py-2 font-semibold">26岁</td></tr>
+              <tr class="border-b border-blue-50"><td class="py-2 text-gray-500">现居</td><td class="py-2 font-semibold">北京</td></tr>
+              <tr class="border-b border-blue-50"><td class="py-2 text-gray-500">求职方向</td><td class="py-2 font-semibold">人力资源专员</td></tr>
+              <tr class="border-b border-blue-50"><td class="py-2 text-gray-500">学历</td><td class="py-2 font-semibold">大专</td></tr>
+              <tr class="border-b border-blue-50"><td class="py-2 text-gray-500">专业</td><td class="py-2 font-semibold">建筑工程管理</td></tr>
+              <tr class="border-b border-blue-50"><td class="py-2 text-gray-500">毕业</td><td class="py-2 font-semibold">浙江建设职业技术学院 · 2024年</td></tr>
+            </tbody>
+          </table>
+          <div class="mt-5 flex flex-wrap gap-2">
+            <span class="bg-green-50 text-green-700 text-xs px-3 py-1 rounded-full font-medium">校优秀毕业生</span>
+            <span class="bg-blue-50 text-brand-600 text-xs px-3 py-1 rounded-full font-medium">校奖学金</span>
+            <span class="bg-blue-50 text-brand-600 text-xs px-3 py-1 rounded-full font-medium">优秀干部</span>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="font-bold text-lg mb-4 text-brand-700">核心能力</h3>
+          <ul class="space-y-3 text-sm text-gray-700">
+            <li class="flex gap-3">
+              <span class="text-brand-500 font-bold shrink-0">01</span>
+              <span><strong>AI+HR自动化系统全流程</strong>：飞书多维表格+Python+AI+定时任务，替代人工重复性工作，六模块数据自动化追踪与报告输出</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="text-brand-500 font-bold shrink-0">02</span>
+              <span><strong>智能简历库与人才画像</strong>：Boss直聘自动收集→AI评分筛选（S/A/B/C/D五级）→S/A级自动打招呼，效率提升90%</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="text-brand-500 font-bold shrink-0">03</span>
+              <span><strong>HR全模块独立统筹</strong>：可独立完成200人规模团队招聘、薪酬考勤、员工关系、五险一金全模块工作</span>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== EXPERIENCE ===== -->
+  <section id="experience" class="py-20 px-6 bg-brand-50">
+    <div class="max-w-5xl mx-auto">
+      <p class="text-brand-500 font-bold tracking-widest uppercase text-sm mb-2">Work Experience</p>
+      <h2 class="text-3xl font-extrabold mb-10">工作经历</h2>
+
+      <!-- 公司1 -->
+      <div class="bg-white rounded-2xl p-8 shadow-sm border border-blue-100 mb-6">
+        <div class="flex flex-wrap items-start justify-between mb-5 gap-3">
+          <div>
+            <h3 class="text-xl font-bold text-brand-900">数字太空（北京）科技股份公司</h3>
+            <p class="text-brand-600 font-medium text-sm mt-1">人力资源专员/助理 &nbsp;·&nbsp; 2024.07 – 2025.11</p>
+          </div>
+          <span class="bg-brand-500 text-white text-xs font-bold px-3 py-1 rounded-full shrink-0">现任</span>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="bg-blue-50 rounded-xl p-4">
+            <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">招聘模块</p>
+            <p class="text-sm text-gray-700">搭建招聘漏斗追踪系统，0人工操作；Boss直聘AI筛选效率提升90%；独立负责集团全岗位招聘全流程</p>
+          </div>
+          <div class="bg-blue-50 rounded-xl p-4">
+            <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">绩效模块</p>
+            <p class="text-sm text-gray-700">AI绩效报告生成，KPI打分→等级评定→调薪建议，绩效核算从2小时缩短至即时生成；OKR追踪系统</p>
+          </div>
+          <div class="bg-blue-50 rounded-xl p-4">
+            <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">员工关系</p>
+            <p class="text-sm text-gray-700">合同风控预警（cron定时）；试用期全流程管理；12份HR制度文件起草，完成北京市法规合规审查</p>
+          </div>
+          <div class="bg-blue-50 rounded-xl p-4">
+            <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">薪酬模块</p>
+            <p class="text-sm text-gray-700">AI+宏代码花名册+考勤+薪酬全流程自动化，考勤异常率8%→3%，核算时间3天→1天</p>
+          </div>
+          <div class="bg-blue-50 rounded-xl p-4">
+            <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">培训模块</p>
+            <p class="text-sm text-gray-700">搭建"HR小管家"智能知识库，覆盖12类HR常见问题，响应效率提升80%；培训效果追踪系统</p>
+          </div>
+          <div class="bg-blue-50 rounded-xl p-4">
+            <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">数据报表</p>
+            <p class="text-sm text-gray-700">行业早报、招聘日报、HR周报/月报定时自动推送飞书群，全链路数据可视化追踪</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 公司2 -->
+      <div class="bg-white rounded-2xl p-8 shadow-sm border border-blue-100">
+        <div class="flex flex-wrap items-start justify-between mb-5 gap-3">
+          <div>
+            <h3 class="text-xl font-bold text-brand-900">北京特路亿庚人力资源管理有限公司</h3>
+            <p class="text-brand-600 font-medium text-sm mt-1">人力资源专员/助理（实习）&nbsp;·&nbsp; 2023.10 – 2024.06</p>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="bg-blue-50 rounded-xl p-4">
+            <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">招聘交付</p>
+            <p class="text-sm text-gray-700">负责北京、石家庄、西安三地10+岗位招聘，半年完成45人入职，核心岗位到岗周期15天→8天，到岗率90%</p>
+          </div>
+          <div class="bg-blue-50 rounded-xl p-4">
+            <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">人事基础</p>
+            <p class="text-sm text-gray-700">130人规模考勤维护、异常核对、月度薪酬核算；建立跨区域人才储备库，沉淀候选人简历300+份</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PROJECTS ===== -->
+  <section id="projects" class="py-20 px-6">
+    <div class="max-w-5xl mx-auto">
+      <p class="text-brand-500 font-bold tracking-widest uppercase text-sm mb-2">Key Projects</p>
+      <h2 class="text-3xl font-extrabold mb-10">核心项目成果</h2>
+
+      <div class="space-y-6">
+
+        <!-- 项目1 -->
+        <div class="bg-white rounded-2xl p-8 shadow-sm card-hover border border-blue-100">
+          <div class="flex flex-wrap items-start justify-between mb-5 gap-4">
+            <div>
+              <span class="inline-block bg-brand-500 text-white text-xs font-bold px-3 py-1 rounded-full mb-3">🚀 招聘自动化系统</span>
+              <h3 class="text-xl font-bold text-brand-900">Boss直聘 AI 筛选 + 自动打招呼</h3>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span class="bg-blue-50 text-brand-600 text-xs px-3 py-1 rounded-full font-medium">Browser Use</span>
+              <span class="bg-blue-50 text-brand-600 text-xs px-3 py-1 rounded-full font-medium">Python</span>
+              <span class="bg-blue-50 text-brand-600 text-xs px-3 py-1 rounded-full font-medium">AI评分</span>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-5">
+            <div class="bg-brand-50 rounded-xl p-5">
+              <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">项目内容</p>
+              <p class="text-sm text-gray-700">Boss直聘简历自动收集 → AI五级评分（S/A/B/C/D）→ S/A级候选人自动打招呼全流程自动化</p>
+            </div>
+            <div class="bg-brand-50 rounded-xl p-5">
+              <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">技术实现</p>
+              <p class="text-sm text-gray-700">browser-use 模拟真实HR操作，Python脚本驱动，AI深度评估替代人工关键词扫描</p>
+            </div>
+            <div class="bg-brand-50 rounded-xl p-5">
+              <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">成果数据</p>
+              <p class="text-sm text-gray-700">AI初筛效率提升<strong>90%</strong>，单次处理50+候选人，已完成<strong>24份</strong>简历AI筛选</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 项目2 -->
+        <div class="bg-white rounded-2xl p-8 shadow-sm card-hover border border-blue-100">
+          <div class="flex flex-wrap items-start justify-between mb-5 gap-4">
+            <div>
+              <span class="inline-block bg-brand-500 text-white text-xs font-bold px-3 py-1 rounded-full mb-3">📊 绩效管理体系</span>
+              <h3 class="text-xl font-bold text-brand-900">AI绩效报告生成系统</h3>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span class="bg-blue-50 text-brand-600 text-xs px-3 py-1 rounded-full font-medium">飞书多维表格</span>
+              <span class="bg-blue-50 text-brand-600 text-xs px-3 py-1 rounded-full font-medium">AI</span>
+              <span class="bg-blue-50 text-brand-600 text-xs px-3 py-1 rounded-full font-medium">KPI&OKR</span>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-5">
+            <div class="bg-brand-50 rounded-xl p-5">
+              <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">项目内容</p>
+              <p class="text-sm text-gray-700">KPI打分 → 绩效等级评定（S/A/B/C/D/E）→ 调薪建议 → 报告输出全流程自动化，支持季度/年度考核</p>
+            </div>
+            <div class="bg-brand-50 rounded-xl p-5">
+              <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">技术实现</p>
+              <p class="text-sm text-gray-700">飞书多维表格 + AI生成绩效评语和改进建议，内置强制分布校验逻辑，确保考核合规</p>
+            </div>
+            <div class="bg-brand-50 rounded-xl p-5">
+              <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">成果数据</p>
+              <p class="text-sm text-gray-700">绩效核算时间从<strong>2小时 → 即时生成</strong>，AI自动生成绩效评语，替代人工撰写</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 项目3 -->
+        <div class="bg-white rounded-2xl p-8 shadow-sm card-hover border border-blue-100">
+          <div class="flex flex-wrap items-start justify-between mb-5 gap-4">
+            <div>
+              <span class="inline-block bg-gray-200 text-gray-600 text-xs font-bold px-3 py-1 rounded-full mb-3">⚙️ HR数据自动化</span>
+              <h3 class="text-xl font-bold text-brand-900">HR cron 定时报告推送</h3>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span class="bg-blue-50 text-brand-600 text-xs px-3 py-1 rounded-full font-medium">Cron</span>
+              <span class="bg-blue-50 text-brand-600 text-xs px-3 py-1 rounded-full font-medium">飞书</span>
+              <span class="bg-blue-50 text-brand-600 text-xs px-3 py-1 rounded-full font-medium">AI早报</span>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-3 gap-5">
+            <div class="bg-brand-50 rounded-xl p-5">
+              <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">项目内容</p>
+              <p class="text-sm text-gray-700">行业早报、招聘日报、HR周报、HR月报定时自动推送至飞书群，数据全链路可视化追踪</p>
+            </div>
+            <div class="bg-brand-50 rounded-xl p-5">
+              <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">技术实现</p>
+              <p class="text-sm text-gray-700">Cron定时任务 + Tavily搜索 + 飞书群推送，招聘/考勤/绩效数据自动汇总</p>
+            </div>
+            <div class="bg-brand-50 rounded-xl p-5">
+              <p class="text-xs text-brand-400 font-semibold uppercase tracking-wider mb-2">成果数据</p>
+              <p class="text-sm text-gray-700">HR事务性工作大幅减少，<strong>0人工操作</strong>定时任务，招聘/绩效数据实时可见</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SKILLS ===== -->
+  <section id="skills" class="py-20 px-6 bg-brand-50">
+    <div class="max-w-5xl mx-auto">
+      <p class="text-brand-500 font-bold tracking-widest uppercase text-sm mb-2">Skills & Tools</p>
+      <h2 class="text-3xl font-extrabold mb-10">技能 & 工具</h2>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        <div class="bg-white rounded-xl p-6 shadow-sm card-hover border border-blue-100">
+          <div class="text-3xl mb-3">🤖</div>
+          <h3 class="font-bold mb-2">AI 大模型应用</h3>
+          <p class="text-sm text-gray-600">Prompt工程 · LLM应用 · AI宏代码生成 · 绩效报告AI生成</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-sm card-hover border border-blue-100">
+          <div class="text-3xl mb-3">🔗</div>
+          <h3 class="font-bold mb-2">飞书生态</h3>
+          <p class="text-sm text-gray-600">多维表格(Bitable) · 飞书知识库 · OKR追踪表 · 审批流搭建</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-sm card-hover border border-blue-100">
+          <div class="text-3xl mb-3">⚙️</div>
+          <h3 class="font-bold mb-2">自动化开发</h3>
+          <p class="text-sm text-gray-600">Python脚本 · Cron定时任务 · Browser Use自动化 · Boss直聘自动化</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-sm card-hover border border-blue-100">
+          <div class="text-3xl mb-3">📊</div>
+          <h3 class="font-bold mb-2">绩效管理</h3>
+          <p class="text-sm text-gray-600">KPI & OKR管理 · 绩效强制分布校验 · 调薪建议 · 绩效报告生成</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-sm card-hover border border-blue-100">
+          <div class="text-3xl mb-3">📋</div>
+          <h3 class="font-bold mb-2">制度体系建设</h3>
+          <p class="text-sm text-gray-600">员工手册 · 12份HR制度文件 · 北京市法规合规审查 · 竞业协议</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-sm card-hover border border-blue-100">
+          <div class="text-3xl mb-3">💰</div>
+          <h3 class="font-bold mb-2">薪酬与人事</h3>
+          <p class="text-sm text-gray-600">薪税核算 · 五险一金 · 花名册管理 · 考勤异常处理 · 薪酬数据分析</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-sm card-hover border border-blue-100">
+          <div class="text-3xl mb-3">🔍</div>
+          <h3 class="font-bold mb-2">招聘全流程</h3>
+          <p class="text-sm text-gray-600">简历AI筛选 · 招聘漏斗分析 · 人才库建设 · 猎头寻访 · 多地协同招聘</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-sm card-hover border border-blue-100">
+          <div class="text-3xl mb-3">📈</div>
+          <h3 class="font-bold mb-2">HR数据报表</h3>
+          <p class="text-sm text-gray-600">行业早报 · 招聘日报 · HR周报/月报 · 人力成本分析 · 离职率追踪</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 shadow-sm card-hover border border-blue-100">
+          <div class="text-3xl mb-3">🛡️</div>
+          <h3 class="font-bold mb-2">员工关系与风控</h3>
+          <p class="text-sm text-gray-600">合同预警 · 试用期管理 · 员工关怀 · 劳动纠纷处理 · 合规审查</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CONTACT ===== -->
+  <section id="contact" class="py-20 px-6 bg-brand-900 text-white">
+    <div class="max-w-5xl mx-auto text-center">
+      <p class="text-blue-300 font-bold tracking-widest uppercase text-sm mb-2">Contact</p>
+      <h2 class="text-3xl font-extrabold mb-4">联系方式</h2>
+      <p class="text-blue-200 mb-12 text-sm">对我感兴趣？直接联系我 👇</p>
+      <div class="grid sm:grid-cols-3 gap-6 max-w-xl mx-auto mb-12">
+
+        <a href="mailto:chengyi_0203@foxmail.com"
+           class="bg-brand-800 hover:bg-brand-700 border border-brand-700 rounded-2xl p-6 transition card-hover">
+          <div class="text-3xl mb-3">✉️</div>
+          <p class="font-bold text-sm">邮箱</p>
+          <p class="text-xs text-blue-300 mt-1">chengyi_0203@foxmail.com</p>
+        </a>
+
+        <a href="#"
+           class="bg-brand-800 hover:bg-brand-700 border border-brand-700 rounded-2xl p-6 transition card-hover">
+          <div class="text-3xl mb-3">💬</div>
+          <p class="font-bold text-sm">微信</p>
+          <p class="text-xs text-blue-300 mt-1">Chenxu99525</p>
+        </a>
+
+        <a href="#"
+           class="bg-brand-800 hover:bg-brand-700 border border-brand-700 rounded-2xl p-6 transition card-hover">
+          <div class="text-3xl mb-3">📍</div>
+          <p class="font-bold text-sm">所在地</p>
+          <p class="text-xs text-blue-300 mt-1">北京</p>
+        </a>
+
+      </div>
+      <p class="text-xs text-blue-400">
+        © 2026 程湛华 · 超级个体HR · AI赋能人力资源六模块全流程
+      </p>
+    </div>
+  </section>
+
+</body>
+</html>
