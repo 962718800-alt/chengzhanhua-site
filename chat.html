@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>程湛华 · AI助理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #f8fafc; font-family: system-ui, sans-serif; }
+    .chat-bubble { max-width: 80%; }
+    .msg-user { align-self: flex-end; }
+    .msg-ai { align-self: flex-start; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+  </style>
+</head>
+<body class="flex flex-col h-screen">
+
+  <!-- Header -->
+  <div class="bg-brand-600 text-white px-6 py-4 flex items-center gap-3 shrink-0">
+    <a href="index.html" class="text-2xl hover:opacity-80">←</a>
+    <div>
+      <div class="font-bold">🤖 湛华的AI助理</div>
+      <div class="text-blue-200 text-xs">Powered by OpenClaw</div>
+    </div>
+    <div class="ml-auto flex items-center gap-2">
+      <span id="status-dot" class="w-2 h-2 rounded-full bg-yellow-400"></span>
+      <span id="status-text" class="text-xs text-blue-200">连接中…</span>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div id="messages" class="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-4">
+    <div class="msg-ai chat-bubble bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border border-blue-100 text-sm text-gray-700">
+      👋 你好！我是湛华的AI助理。<br><br>
+      有什么HR相关的问题想聊？比如：<br>
+      • 招聘流程优化<br>
+      • 绩效体系设计<br>
+      • 员工关系处理<br>
+      • AI工具应用<br><br>
+      <span class="text-xs text-gray-400">首次加载可能需要几秒钟建立连接</span>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="border-t border-gray-200 bg-white px-4 py-4 shrink-0">
+    <div class="flex gap-3 max-w-3xl mx-auto">
+      <input id="input" type="text"
+        class="flex-1 border border-gray-300 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+        placeholder="输入你的问题，按 Enter 发送…" 
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){send();return false}" />
+      <button onclick="send()"
+        class="bg-brand-600 hover:bg-brand-500 text-white w-12 h-12 rounded-2xl flex items-center justify-center text-xl transition shrink-0">
+        ↑
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const TUNNEL_URL = 'https://guided-pleased-girls-labour.trycloudflare.com';
+    const TOKEN = 'e9026b3404ed3e558706b3ff7fe9c90dfbe860c5a57377aa';
+    let ws = null;
+    let sessionId = null;
+    let connected = false;
+    let pendingResolve = null;
+
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('input');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+
+    function setStatus(state, text) {
+      statusDot.className = 'w-2 h-2 rounded-full ' + 
+        { connecting: 'bg-yellow-400', connected: 'bg-green-400', error: 'bg-red-400' }[state] || 'bg-gray-400';
+      statusText.textContent = text;
+    }
+
+    function scrollBottom() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function addMsg(role, text) {
+      const isUser = role === 'user';
+      const div = document.createElement('div');
+      div.className = `msg-${role} chat-bubble ${isUser ? 'bg-brand-600 text-white' : 'bg-white text-gray-700'} rounded-2xl ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'} p-4 shadow-sm ${isUser ? 'border-none' : 'border border-blue-100'} text-sm leading-relaxed`;
+      div.textContent = text;
+      messagesEl.appendChild(div);
+      scrollBottom();
+    }
+
+    function addLoading() {
+      const div = document.createElement('div');
+      div.id = 'loading';
+      div.className = 'msg-ai chat-bubble bg-white text-gray-400 rounded-2xl rounded-tl-sm p-4 shadow-sm border border-blue-100 text-sm';
+      div.textContent = '思考中…';
+      messagesEl.appendChild(div);
+      scrollBottom();
+    }
+
+    function removeLoading() {
+      const el = document.getElementById('loading');
+      if (el) el.remove();
+    }
+
+    function connect() {
+      setStatus('connecting', '连接中…');
+      ws = new WebSocket(TUNNEL_URL + '/');
+
+      ws.onopen = () => {
+        // Send auth
+        ws.send(JSON.stringify({ type: 'auth', token: TOKEN }));
+      };
+
+      ws.onmessage = (evt) => {
+        let data;
+        try { data = JSON.parse(evt.data); } catch { return; }
+
+        if (data.type === 'auth_ok') {
+          connected = true;
+          setStatus('connected', '在线');
+          // Get session history
+          ws.send(JSON.stringify({ type: 'chat.history', maxChars: 5000 }));
+          return;
+        }
+
+        if (data.type === 'chat.history' && data.sessionId) {
+          sessionId = data.sessionId;
+          return;
+        }
+
+        if (data.type === 'error') {
+          removeLoading();
+          addMsg('ai', '出错了：' + (data.message || '未知错误'));
+          setStatus('error', '错误');
+          return;
+        }
+
+        if (data.type === 'chat.message' && data.role === 'assistant') {
+          removeLoading();
+          addMsg('ai', data.content || '');
+          if (pendingResolve) { pendingResolve(); pendingResolve = null; }
+        }
+      };
+
+      ws.onerror = () => {
+        setStatus('error', '连接失败');
+        removeLoading();
+      };
+
+      ws.onclose = () => {
+        connected = false;
+        setStatus('error', '已断开，重试中…');
+        setTimeout(connect, 3000);
+      };
+    }
+
+    function send() {
+      const text = inputEl.value.trim();
+      if (!text || !connected) return;
+      addMsg('user', text);
+      inputEl.value = '';
+      addLoading();
+      ws.send(JSON.stringify({
+        type: 'chat.send',
+        sessionId: sessionId || null,
+        content: text
+      }));
+    }
+
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#eff6ff',100:'#dbeafe',500:'#1d4ed8',600:'#1e40af',700:'#1e3a8a',900:'#1e293b' }
+          }
+        }
+      }
+    };
+
+    connect();
+  </script>
+</body>
+</html>
