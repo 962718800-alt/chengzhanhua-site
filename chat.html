@@ -18,7 +18,7 @@
 
   <!-- Header -->
   <div class="bg-brand-600 text-white px-6 py-4 flex items-center gap-3 shrink-0">
-    <a href="index.html" class="text-2xl hover:opacity-80">←</a>
+    <a href="index.html" class="text-2xl hover:opacity-80" title="返回首页">←</a>
     <div>
       <div class="font-bold">🤖 湛华的AI助理</div>
       <div class="text-blue-200 text-xs">Powered by OpenClaw</div>
@@ -57,8 +57,21 @@
   </div>
 
   <script>
-    const TUNNEL_URL = 'https://guided-pleased-girls-labour.trycloudflare.com';
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#eff6ff',100:'#dbeafe',500:'#1d4ed8',600:'#1e40af',700:'#1e3a8a',900:'#1e293b' }
+          }
+        }
+      }
+    };
+
+    // === Config ===
+    // Cloudflare Tunnel URL (公网)
+    const GATEWAY_URL = 'wss://guided-pleased-girls-labour.trycloudflare.com';
     const TOKEN = 'e9026b3404ed3e558706b3ff7fe9c90dfbe860c5a57377aa';
+
     let ws = null;
     let sessionId = null;
     let connected = false;
@@ -70,8 +83,8 @@
     const statusText = document.getElementById('status-text');
 
     function setStatus(state, text) {
-      statusDot.className = 'w-2 h-2 rounded-full ' + 
-        { connecting: 'bg-yellow-400', connected: 'bg-green-400', error: 'bg-red-400' }[state] || 'bg-gray-400';
+      const colors = { connecting: 'bg-yellow-400', connected: 'bg-green-400', error: 'bg-red-400' };
+      statusDot.className = 'w-2 h-2 rounded-full ' + (colors[state] || 'bg-gray-400');
       statusText.textContent = text;
     }
 
@@ -102,44 +115,103 @@
       if (el) el.remove();
     }
 
+    function generateId() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+    }
+
+    function sendRaw(obj) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(obj));
+      }
+    }
+
+    function handleMessage(data) {
+      // Ignore non-object messages
+      if (typeof data !== 'object' || data === null) return;
+
+      // connect.ok
+      if (data.type === 'res' && data.ok && data.payload?.type === 'hello-ok') {
+        connected = true;
+        setStatus('connected', '在线');
+        sessionId = data.payload?.sessionId || null;
+        return;
+      }
+
+      // chat.history response
+      if (data.type === 'res' && data.id === 'history_req') {
+        // History received - could display old messages
+        return;
+      }
+
+      // Error
+      if (data.type === 'res' && !data.ok) {
+        removeLoading();
+        addMsg('ai', '出错了：' + (data.error?.message || '未知错误'));
+        if (pendingResolve) { pendingResolve(); pendingResolve = null; }
+        return;
+      }
+
+      // Incoming chat message
+      if (data.type === 'event' && data.event === 'chat.message') {
+        removeLoading();
+        if (data.payload?.role === 'assistant' && data.payload?.content) {
+          addMsg('ai', data.payload.content);
+        }
+        if (pendingResolve) { pendingResolve(); pendingResolve = null; }
+        return;
+      }
+
+      // Session info
+      if (data.type === 'event' && data.event === 'chat.session') {
+        if (data.payload?.sessionId) {
+          sessionId = data.payload.sessionId;
+        }
+        return;
+      }
+    }
+
     function connect() {
       setStatus('connecting', '连接中…');
-      ws = new WebSocket(TUNNEL_URL + '/');
+      ws = new WebSocket(GATEWAY_URL);
 
       ws.onopen = () => {
-        // Send auth
-        ws.send(JSON.stringify({ type: 'auth', token: TOKEN }));
+        // Wait for challenge; on_message will handle auth response
       };
 
       ws.onmessage = (evt) => {
         let data;
         try { data = JSON.parse(evt.data); } catch { return; }
 
-        if (data.type === 'auth_ok') {
-          connected = true;
-          setStatus('connected', '在线');
-          // Get session history
-          ws.send(JSON.stringify({ type: 'chat.history', maxChars: 5000 }));
+        if (data.type === 'event' && data.event === 'connect.challenge') {
+          // Respond with connect request
+          const nonce = data.payload?.nonce;
+          ws.send(JSON.stringify({
+            type: 'req',
+            id: generateId(),
+            method: 'connect',
+            params: {
+              minProtocol: 3,
+              maxProtocol: 3,
+              client: {
+                id: 'cli',
+                version: '2026.5.2',
+                platform: 'web',
+                mode: 'cli'
+              },
+              role: 'operator',
+              scopes: ['operator.read', 'operator.write', 'chat.send', 'chat.history', 'chat.inject'],
+              auth: { token: TOKEN },
+              locale: 'zh-CN',
+              userAgent: navigator.userAgent
+            }
+          }));
           return;
         }
 
-        if (data.type === 'chat.history' && data.sessionId) {
-          sessionId = data.sessionId;
-          return;
-        }
-
-        if (data.type === 'error') {
-          removeLoading();
-          addMsg('ai', '出错了：' + (data.message || '未知错误'));
-          setStatus('error', '错误');
-          return;
-        }
-
-        if (data.type === 'chat.message' && data.role === 'assistant') {
-          removeLoading();
-          addMsg('ai', data.content || '');
-          if (pendingResolve) { pendingResolve(); pendingResolve = null; }
-        }
+        handleMessage(data);
       };
 
       ws.onerror = () => {
@@ -149,8 +221,11 @@
 
       ws.onclose = () => {
         connected = false;
-        setStatus('error', '已断开，重试中…');
-        setTimeout(connect, 3000);
+        setStatus('error', '已断开');
+        // Auto reconnect after 3s
+        if (ws) {
+          setTimeout(connect, 3000);
+        }
       };
     }
 
@@ -160,23 +235,18 @@
       addMsg('user', text);
       inputEl.value = '';
       addLoading();
-      ws.send(JSON.stringify({
-        type: 'chat.send',
-        sessionId: sessionId || null,
-        content: text
-      }));
+      sendRaw({
+        type: 'req',
+        id: generateId(),
+        method: 'chat.send',
+        params: {
+          sessionId: sessionId || undefined,
+          content: text
+        }
+      });
     }
 
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: { 50:'#eff6ff',100:'#dbeafe',500:'#1d4ed8',600:'#1e40af',700:'#1e3a8a',900:'#1e293b' }
-          }
-        }
-      }
-    };
-
+    // Start
     connect();
   </script>
 </body>
