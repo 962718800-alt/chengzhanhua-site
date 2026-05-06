@@ -406,11 +406,35 @@
         </a>
 
       </div>
-      <p class="text-xs text-blue-400">
-        © 2026 程湛华 · 超级个体HR · AI赋能人力资源六模块全流程
-      </p>
+  <!-- ===== CHAT WIDGET ===== -->
+  <div id="chat-widget" class="fixed bottom-6 right-6 z-50">
+    <button onclick="toggleChat()" id="chat-btn"
+      class="bg-brand-600 hover:bg-brand-500 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-2xl transition-all hover:scale-105"
+      title="在线对话">
+      💬
+    </button>
+    <div id="chat-panel" class="hidden absolute bottom-20 right-0 w-80 bg-white rounded-2xl shadow-2xl border border-blue-100 overflow-hidden">
+      <div class="bg-brand-600 text-white px-4 py-3 font-bold text-sm">
+        🤖 湛华的AI助理
+      </div>
+      <div class="p-4 text-sm text-gray-600 space-y-2">
+        <div class="bg-blue-50 rounded-xl p-3 text-sm">
+          👋 你好！我是湛华的AI助理<br/><br/>
+          有什么HR相关的问题想聊？<br/>
+          招聘·绩效·员工关系·AI工具应用<br/><br/>
+          <a href="https://962718800-alt.github.io/chengzhanhua-site/" target="_blank"
+             class="text-brand-600 font-bold underline">→ 点击这里开始对话</a>
+        </div>
+        <p class="text-xs text-gray-400 text-center mt-2">对话由程湛华的AI助理提供支持</p>
+      </div>
     </div>
-  </section>
+  </div>
+  <script>
+    function toggleChat() {
+      var panel = document.getElementById('chat-panel');
+      panel.classList.toggle('hidden');
+    }
+  </script>
 
 </body>
 </html>
