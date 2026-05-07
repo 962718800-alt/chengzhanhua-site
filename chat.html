@@ -33,11 +33,7 @@
   <div id="messages" class="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-4">
     <div class="msg-ai chat-bubble bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border border-blue-100 text-sm text-gray-700">
       👋 你好！我是湛华的AI助理。<br><br>
-      有什么HR相关的问题想聊？比如：<br>
-      • 招聘流程优化<br>
-      • 绩效体系设计<br>
-      • 员工关系处理<br>
-      • AI工具应用<br><br>
+      有什么问题想聊？<br>
       <span class="text-xs text-gray-400">首次加载可能需要几秒钟建立连接</span>
     </div>
   </div>
@@ -67,13 +63,11 @@
       }
     };
 
-    // === Config ===
-    // Cloudflare Tunnel URL (公网)
-    const GATEWAY_URL = 'wss://paris-connecting-fundamentals-eminem.trycloudflare.com';
-    const TOKEN = 'dummy-token-for-auth-none';
+    // ws-proxy2 connects to OpenClaw gateway internally
+    // Visitor connects to ws-proxy2 which bridges to the AI
+    const GATEWAY_URL = 'wss://grill-bracelet-data-beverages.trycloudflare.com';
 
     let ws = null;
-    let sessionId = null;
     let connected = false;
     let pendingResolve = null;
 
@@ -122,27 +116,19 @@
       });
     }
 
-    function sendRaw(obj) {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(obj));
-      }
-    }
-
     function handleMessage(data) {
-      // Ignore non-object messages
       if (typeof data !== 'object' || data === null) return;
+
+      // connect.challenge from ws-proxy2 (proxied from gateway)
+      if (data.event === 'connect.challenge') {
+        // ws-proxy2 handles device auth internally; just acknowledge
+        return;
+      }
 
       // connect.ok
       if (data.type === 'res' && data.ok && data.payload?.type === 'hello-ok') {
         connected = true;
         setStatus('connected', '在线');
-        sessionId = data.payload?.sessionId || null;
-        return;
-      }
-
-      // chat.history response
-      if (data.type === 'res' && data.id === 'history_req') {
-        // History received - could display old messages
         return;
       }
 
@@ -154,21 +140,12 @@
         return;
       }
 
-      // Incoming chat message
-      if (data.type === 'event' && data.event === 'chat.message') {
+      // Incoming chat message from AI
+      if (data.type === 'event' && (data.event === 'chat.message' || data.event === 'agent')) {
         removeLoading();
-        if (data.payload?.role === 'assistant' && data.payload?.content) {
-          addMsg('ai', data.payload.content);
-        }
+        const content = data.payload?.content || data.payload?.text || data.payload?.stream || '';
+        if (content) addMsg('ai', content);
         if (pendingResolve) { pendingResolve(); pendingResolve = null; }
-        return;
-      }
-
-      // Session info
-      if (data.type === 'event' && data.event === 'chat.session') {
-        if (data.payload?.sessionId) {
-          sessionId = data.payload.sessionId;
-        }
         return;
       }
     }
@@ -178,39 +155,12 @@
       ws = new WebSocket(GATEWAY_URL);
 
       ws.onopen = () => {
-        // Wait for challenge; on_message will handle auth response
+        // ws-proxy2 handles auth; we just wait for connection to be established
       };
 
       ws.onmessage = (evt) => {
         let data;
         try { data = JSON.parse(evt.data); } catch { return; }
-
-        if (data.type === 'event' && data.event === 'connect.challenge') {
-          // Respond with connect request
-          const nonce = data.payload?.nonce;
-          ws.send(JSON.stringify({
-            type: 'req',
-            id: generateId(),
-            method: 'connect',
-            params: {
-              minProtocol: 3,
-              maxProtocol: 3,
-              client: {
-                id: 'cli',
-                version: '2026.5.2',
-                platform: 'web',
-                mode: 'cli'
-              },
-              role: 'operator',
-              scopes: ['operator.read', 'chat.send', 'chat.history', 'chat.inject'],
-              auth: { token: TOKEN },
-              locale: 'zh-CN',
-              userAgent: navigator.userAgent
-            }
-          }));
-          return;
-        }
-
         handleMessage(data);
       };
 
@@ -222,31 +172,25 @@
       ws.onclose = () => {
         connected = false;
         setStatus('error', '已断开');
-        // Auto reconnect after 3s
-        if (ws) {
-          setTimeout(connect, 3000);
-        }
+        setTimeout(connect, 3000);
       };
     }
 
     function send() {
       const text = inputEl.value.trim();
-      if (!text || !connected) return;
+      if (!text) return;
       addMsg('user', text);
       inputEl.value = '';
-      addLoading();
-      sendRaw({
-        type: 'req',
-        id: generateId(),
-        method: 'chat.send',
-        params: {
-          sessionId: sessionId || undefined,
-          content: text
-        }
-      });
+      
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        addLoading();
+        // Send plain text message; ws-proxy2 bridges to gateway session
+        ws.send(JSON.stringify({ content: text }));
+      } else {
+        addMsg('ai', '还未连接，请稍候…');
+      }
     }
 
-    // Start
     connect();
   </script>
 </body>
