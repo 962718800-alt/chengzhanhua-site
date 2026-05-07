@@ -63,8 +63,6 @@
       }
     };
 
-    // ws-proxy2 connects to OpenClaw gateway internally
-    // Visitor connects to ws-proxy2 which bridges to the AI
     const GATEWAY_URL = 'wss://grill-bracelet-data-beverages.trycloudflare.com';
 
     let ws = null;
@@ -109,24 +107,15 @@
       if (el) el.remove();
     }
 
-    function generateId() {
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-        const r = Math.random() * 16 | 0;
-        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-      });
-    }
-
     function handleMessage(data) {
       if (typeof data !== 'object' || data === null) return;
 
-      // connect.challenge from ws-proxy2 (proxied from gateway)
-      if (data.event === 'connect.challenge') {
-        // ws-proxy2 handles device auth internally; just acknowledge
-        return;
-      }
+      // connect.challenge — ws-proxy2 handles auth internally
+      if (data.event === 'connect.challenge') return;
 
-      // connect.ok
-      if (data.type === 'res' && data.ok && data.payload?.type === 'hello-ok') {
+      // hello-ok — dual format detection
+      if ((data.type === 'res' && data.ok && data.payload?.type === 'hello-ok') ||
+          (data.event === 'hello-ok')) {
         connected = true;
         setStatus('connected', '在线');
         return;
@@ -136,16 +125,33 @@
       if (data.type === 'res' && !data.ok) {
         removeLoading();
         addMsg('ai', '出错了：' + (data.error?.message || '未知错误'));
-        if (pendingResolve) { pendingResolve(); pendingResolve = null; }
         return;
       }
 
-      // Incoming chat message from AI
-      if (data.type === 'event' && (data.event === 'chat.message' || data.event === 'agent')) {
+      // Incoming AI message
+      if (data.type === 'event') {
         removeLoading();
-        const content = data.payload?.content || data.payload?.text || data.payload?.stream || '';
+        let content = '';
+
+        if (data.event === 'chat.message') {
+          content = data.payload?.content || data.payload?.text || '';
+        } else if (data.event === 'agent') {
+          const p = data.payload;
+          // agent events: content lives in data.data.content (stream=content delta)
+          // or data.data.text for text events
+          const d = p?.data;
+          if (d) {
+            if (d.content) {
+              content = d.content;
+            } else if (d.text) {
+              content = d.text;
+            }
+          }
+          // Skip internal stream metadata — only show real content
+          if (!content) return;
+        }
+
         if (content) addMsg('ai', content);
-        if (pendingResolve) { pendingResolve(); pendingResolve = null; }
         return;
       }
     }
@@ -154,9 +160,7 @@
       setStatus('connecting', '连接中…');
       ws = new WebSocket(GATEWAY_URL);
 
-      ws.onopen = () => {
-        // ws-proxy2 handles auth; we just wait for connection to be established
-      };
+      ws.onopen = () => {};
 
       ws.onmessage = (evt) => {
         let data;
@@ -164,10 +168,7 @@
         handleMessage(data);
       };
 
-      ws.onerror = () => {
-        setStatus('error', '连接失败');
-        removeLoading();
-      };
+      ws.onerror = () => setStatus('error', '连接失败');
 
       ws.onclose = () => {
         connected = false;
@@ -184,7 +185,6 @@
       
       if (ws && ws.readyState === WebSocket.OPEN) {
         addLoading();
-        // Send plain text message; ws-proxy2 bridges to gateway session
         ws.send(JSON.stringify({ content: text }));
       } else {
         addMsg('ai', '还未连接，请稍候…');
