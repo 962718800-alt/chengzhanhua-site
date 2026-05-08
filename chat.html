@@ -121,6 +121,64 @@
       return false;
     }
 
+    // Streaming state
+    let currentAiDiv = null;
+    let currentText = '';
+    let thinkingPhase = false;
+
+    function startAiBubble() {
+      removeLoading();
+      const div = document.createElement('div');
+      div.className = 'msg-ai chat-bubble bg-white text-gray-700 rounded-2xl rounded-tl-sm p-4 shadow-sm border border-blue-100 text-sm leading-relaxed';
+      div.textContent = '';
+      messagesEl.appendChild(div);
+      currentAiDiv = div;
+      currentText = '';
+      thinkingPhase = true;
+      scrollBottom();
+    }
+
+    function appendToAiBubble(text) {
+      if (!currentAiDiv) return;
+      currentText += text;
+      currentAiDiv.textContent = currentText;
+      scrollBottom();
+    }
+
+    function finalizeAiBubble() {
+      if (!currentAiDiv) return;
+      const final = currentText.trim();
+      if (final) {
+        currentAiDiv.textContent = final;
+      } else {
+        currentAiDiv.remove();
+      }
+      currentAiDiv = null;
+      currentText = '';
+      thinkingPhase = false;
+    }
+
+    // Strip thinking prefix from accumulated text
+    function stripThinkingPrefix(text) {
+      const t = text.trim();
+      // Match "The user said..." or similar internal narration patterns
+      const thinkPatterns = [
+        /^The user said [^.。]+[.。]\s*/,
+        /^用户发来了[^.。]+[.。]\s*/,
+        /^\[Thinking[^\]]*\]\s*/,
+        /^根据 SOUL\.md[^.。]*[.。]\s*/,
+        /^According to SOUL\.md[^.。]*[.。]\s*/,
+        /^我在想[^.。]*[.。]\s*/,
+        /^I should [^.。]*[.。]\s*/,
+        /^Let me [^.。]*[.。]\s*/,
+      ];
+      let result = text;
+      for (const pat of thinkPatterns) {
+        result = result.replace(pat, '');
+      }
+      return result;
+    }
+
     function handleMessage(data) {
       if (typeof data !== 'object' || data === null) return;
 
@@ -135,31 +193,75 @@
 
       if (data.type === 'res' && !data.ok) {
         removeLoading();
+        finalizeAiBubble();
         addMsg('ai', '出错了：' + (data.error?.message || '未知错误'));
         return;
       }
 
       if (data.type === 'event') {
-        removeLoading();
-        let content = '';
+        const evt = data.event;
+        const p = data.payload || {};
+        const d = p.data || {};
 
-        if (data.event === 'chat.message') {
-          content = data.payload?.content || data.payload?.text || '';
-        } else if (data.event === 'agent') {
-          const p = data.payload;
-          const d = p?.data;
-          if (d) {
-            if (d.content) content = d.content;
-            else if (d.text) content = d.text;
+        // Final message event — show complete response
+        if (p.state === 'final' || p.state === 'complete') {
+          finalizeAiBubble();
+          let content = '';
+          if (d.content) {
+            if (typeof d.content === 'string') content = d.content;
+            else if (Array.isArray(d.content)) {
+              content = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
+            }
+          } else if (d.text) {
+            content = d.text;
           }
-          if (!content) return;
+          content = stripThinkingPrefix(content).trim();
+          if (content) addMsg('ai', content);
+          return;
         }
 
-        // Skip thinking/reasoning content
-        if (!content || isThinkingText(content)) return;
+        // Streaming delta — accumulate text
+        if (p.state === 'delta' || p.state === 'streaming') {
+          if (!currentAiDiv) startAiBubble();
 
+          const delta = d.delta || d.text || '';
+
+          // replace=true signals the thinking/prefix phase is done — clean and restart
+          if (d.replace === true) {
+            // If we accumulated thinking content, strip it and restart fresh
+            if (thinkingPhase && currentText) {
+              const clean = stripThinkingPrefix(currentText).trim();
+              currentText = clean ? clean + delta : delta;
+              thinkingPhase = false;
+            } else {
+              currentText = delta;
+            }
+            if (currentAiDiv) {
+              currentAiDiv.textContent = currentText;
+              scrollBottom();
+            }
+          } else {
+            // Normal incremental append
+            currentText += delta;
+            if (currentAiDiv) {
+              currentAiDiv.textContent = currentText;
+              scrollBottom();
+            }
+          }
+          return;
+        }
+
+        // Non-streaming agent/chat events
+        let content = '';
+        if (evt === 'chat.message') {
+          content = p.content || p.text || '';
+        } else if (evt === 'agent') {
+          content = d.content || d.text || '';
+        }
+        if (!content) return;
+        content = stripThinkingPrefix(content).trim();
+        if (!content) return;
         addMsg('ai', content);
-        return;
       }
     }
 
