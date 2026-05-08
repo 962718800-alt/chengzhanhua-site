@@ -107,13 +107,25 @@
       if (el) el.remove();
     }
 
+    // Returns true if text looks like internal thinking/reasoning that should be skipped
+    function isThinkingText(text) {
+      if (!text || typeof text !== 'string') return true;
+      const t = text.trim();
+      if (t.startsWith('The user said')) return true;
+      if (t.startsWith('用户发来了')) return true;
+      if (t.startsWith('[Thinking')) return true;
+      if (t.includes('根据 SOUL.md')) return true;
+      if (t.includes('According to SOUL.md')) return true;
+      if (t.includes('我在想')) return true;
+      if (t.startsWith('I should') || t.startsWith('Let me')) return true;
+      return false;
+    }
+
     function handleMessage(data) {
       if (typeof data !== 'object' || data === null) return;
 
-      // connect.challenge — ws-proxy2 handles auth internally
       if (data.event === 'connect.challenge') return;
 
-      // hello-ok — dual format detection
       if ((data.type === 'res' && data.ok && data.payload?.type === 'hello-ok') ||
           (data.event === 'hello-ok')) {
         connected = true;
@@ -121,14 +133,12 @@
         return;
       }
 
-      // Error
       if (data.type === 'res' && !data.ok) {
         removeLoading();
         addMsg('ai', '出错了：' + (data.error?.message || '未知错误'));
         return;
       }
 
-      // Incoming AI message
       if (data.type === 'event') {
         removeLoading();
         let content = '';
@@ -137,26 +147,18 @@
           content = data.payload?.content || data.payload?.text || '';
         } else if (data.event === 'agent') {
           const p = data.payload;
-          // agent events: content lives in data.data.content (stream=content delta)
-          // or data.data.text for text events
           const d = p?.data;
           if (d) {
-            if (d.content) {
-              content = d.content;
-            } else if (d.text) {
-              content = d.text;
-            }
+            if (d.content) content = d.content;
+            else if (d.text) content = d.text;
           }
-          // Skip internal stream metadata — only show real content
           if (!content) return;
         }
 
-        if (content) {
-          // Filter out thinking/reasoning content blocks
-          if (typeof content === 'string' && !content.startsWith('[Thinking') && !content.includes('根据 SOUL') && !content.includes('用户发来了')) {
-            addMsg('ai', content);
-          }
-        }
+        // Skip thinking/reasoning content
+        if (!content || isThinkingText(content)) return;
+
+        addMsg('ai', content);
         return;
       }
     }
