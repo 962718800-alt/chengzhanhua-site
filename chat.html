@@ -151,7 +151,12 @@
           if (!content) return;
         }
 
-        if (content) addMsg('ai', content);
+        if (content) {
+          // Filter out thinking/reasoning content blocks
+          if (typeof content === 'string' && !content.startsWith('[Thinking') && !content.includes('根据 SOUL') && !content.includes('用户发来了')) {
+            addMsg('ai', content);
+          }
+        }
         return;
       }
     }
