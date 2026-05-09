@@ -237,14 +237,15 @@
     function appendToAiBubble(delta) {
       if (!currentAiDiv) return;
       currentText += delta;
-      // Strip thinking and check if we have real content
-      const clean = stripThinkingPrefix(currentText).trim();
-      const contentDiv = currentAiDiv.querySelector('.md-content');
 
-      // Real content = has 3+ consecutive Chinese or Latin chars AND not just thinking patterns
+      // Strip thinking content from accumulated text (so it never accumulates or renders)
+      currentText = stripThinkingPrefix(currentText);
+
+      // Check if we have real content now
+      const clean = currentText.trim();
       const isReal = clean.length > 0 && !isThinkingText(clean) && /[\u4e00-\u9fa5a-zA-Z]{3,}/.test(clean);
 
-      if (!isReal) return; // Still thinking — don't render anything
+      if (!isReal) return; // Still pure thinking — don't render anything
 
       if (!hasRealContent) {
         // First real content — hide typing indicator
@@ -252,6 +253,7 @@
         hideTyping();
       }
 
+      const contentDiv = currentAiDiv.querySelector('.md-content');
       if (contentDiv) contentDiv.innerHTML = renderMarkdown(clean);
       scrollBottom();
     }
@@ -292,18 +294,13 @@
         const d = p.data || {};
 
         if (p.state === 'final' || p.state === 'complete') {
-          finalizeAiBubble('');
-          let content = '';
-          if (d.content) {
-            if (typeof d.content === 'string') content = d.content;
-            else if (Array.isArray(d.content)) {
-              content = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
-            }
-          } else if (d.text) {
-            content = d.text;
-          }
-          content = stripThinkingPrefix(content).trim();
+          // Finalize any in-progress bubble
+          finalizeAiBubble();
+          // Strip thinking from full accumulated text
+          let content = stripThinkingPrefix(currentText).trim();
           if (content) addMsg('ai', content, true);
+          currentText = '';
+          hasRealContent = false;
           return;
         }
 
