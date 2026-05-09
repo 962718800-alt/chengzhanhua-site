@@ -262,12 +262,13 @@
 
     function finalizeAiBubble() {
       hideTyping();
-      if (!currentAiDiv) return;
-      currentText = stripThinkingPrefix(currentText).trim();
+      if (!currentAiDiv) return '';
+      const content = stripThinkingPrefix(currentText).trim();
       const contentDiv = currentAiDiv.querySelector('.md-content');
-      if (contentDiv) contentDiv.innerHTML = currentText ? renderMarkdown(currentText) : '';
-      if (!currentText) currentAiDiv.remove();
+      if (contentDiv) contentDiv.innerHTML = content ? renderMarkdown(content) : '';
+      if (!content) currentAiDiv.remove();
       currentAiDiv = null;
+      return content;
     }
 
     function handleMessage(data) {
@@ -294,10 +295,7 @@
         const d = p.data || {};
 
         if (p.state === 'final' || p.state === 'complete') {
-          // Finalize any in-progress bubble
-          finalizeAiBubble();
-          // Strip thinking from full accumulated text
-          let content = stripThinkingPrefix(currentText).trim();
+          const content = finalizeAiBubble().trim();
           if (content) addMsg('ai', content, true);
           currentText = '';
           hasRealContent = false;
