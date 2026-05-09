@@ -81,7 +81,7 @@
       <input id="input" type="text"
         class="flex-1 border border-slate-300 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-shadow"
         placeholder="输入问题，按 Enter 发送…" 
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();return false}" />
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();event.stopPropagation();send()}" />
       <button onclick="send()" id="send-btn"
         class="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white w-11 h-11 rounded-2xl flex items-center justify-center text-lg transition-colors shrink-0">
         ↑
@@ -403,22 +403,20 @@
     }
 
     function send() {
-      const text = inputEl.value;
-      const trimmed = text.trim();
-      if (!trimmed) {
-        inputEl.value = '';
-        return;
-      }
-      addMsg('user', trimmed, true);
-      inputEl.value = '';
+      const raw = inputEl.value;
+      const text = raw.trim();
+      inputEl.value = ''; // Always clear immediately, even before processing
       inputEl.focus();
+      if (!text) return;
+
+      addMsg('user', text, true);
       sendBtn.classList.add('opacity-60', 'cursor-not-allowed');
       sendBtn.disabled = true;
       hideTyping();
 
       if (ws && ws.readyState === WebSocket.OPEN) {
         showTyping();
-        ws.send(JSON.stringify({ content: trimmed }));
+        ws.send(JSON.stringify({ content: text }));
       } else {
         addMsg('ai', '还未连接，请稍候…', true);
         sendBtn.classList.remove('opacity-60', 'cursor-not-allowed');
