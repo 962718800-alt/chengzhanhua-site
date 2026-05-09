@@ -80,8 +80,9 @@
     <div class="flex gap-2.5 max-w-3xl mx-auto">
       <input id="input" type="text"
         class="flex-1 border border-slate-300 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-shadow"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
         placeholder="输入问题，按 Enter 发送…" 
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();event.stopPropagation();send()}" />
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}" />
       <button onclick="send()" id="send-btn"
         class="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white w-11 h-11 rounded-2xl flex items-center justify-center text-lg transition-colors shrink-0">
         ↑
@@ -403,12 +404,12 @@
     }
 
     function send() {
-      const raw = inputEl.value;
-      const text = raw.trim();
-      inputEl.value = ''; // Always clear immediately, even before processing
-      inputEl.focus();
+      const text = inputEl.value.trim();
+      // Synchronously clear immediately so browser can't re-populate
+      const saved = inputEl.value;
+      inputEl.value = '';
+      inputEl.blur(); // Remove focus to prevent any browser autocomplete overlay
       if (!text) return;
-
       addMsg('user', text, true);
       sendBtn.classList.add('opacity-60', 'cursor-not-allowed');
       sendBtn.disabled = true;
