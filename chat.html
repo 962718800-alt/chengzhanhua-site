@@ -13,7 +13,6 @@
     .msg-ai { align-self: flex-start; }
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
-    /* Markdown styles */
     .msg-ai .md-content h1, .msg-ai .md-content h2, .msg-ai .md-content h3 { font-size: 1em; font-weight: 600; margin: 0.5em 0 0.25em; }
     .msg-ai .md-content p { margin: 0.4em 0; }
     .msg-ai .md-content ul, .msg-ai .md-content ol { margin: 0.4em 0; padding-left: 1.2em; }
@@ -25,7 +24,6 @@
     .msg-ai .md-content em { font-style: italic; }
     .msg-ai .md-content blockquote { border-left: 3px solid #93c5fd; padding-left: 0.75em; color: #64748b; margin: 0.4em 0; }
     .msg-ai .md-content a { color: #3b82f6; text-decoration: underline; }
-    /* Typing dots */
     .typing-dot { width: 6px; height: 6px; background: #94a3b8; border-radius: 50%; animation: typingBounce 1.4s infinite ease-in-out; }
     .typing-dot:nth-child(1) { animation-delay: 0s; }
     .typing-dot:nth-child(2) { animation-delay: 0.2s; }
@@ -34,9 +32,27 @@
       0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
       30% { transform: translateY(-4px); opacity: 1; }
     }
-    /* Fade in */
     .fade-in { animation: fadeIn 0.2s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    /* Input area */
+    #chat-input {
+      flex: 1;
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+      padding: 0.625rem 1rem;
+      font-size: 0.875rem;
+      outline: none;
+      resize: none;
+      overflow: hidden;
+      height: 44px;
+      line-height: 1.5;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    #chat-input:focus {
+      border-color: #94a3b8;
+      box-shadow: 0 0 0 3px rgba(148,163,184,0.2);
+    }
+    #chat-input::-webkit-scrollbar { display: none; }
   </style>
 </head>
 <body class="flex flex-col h-screen">
@@ -65,7 +81,7 @@
     </div>
   </div>
 
-  <!-- Typing indicator (hidden by default) -->
+  <!-- Typing indicator -->
   <div id="typing-indicator" class="hidden px-5 pb-3 shrink-0">
     <div class="flex items-center gap-1.5">
       <div class="typing-dot"></div>
@@ -77,13 +93,12 @@
 
   <!-- Input -->
   <div class="border-t border-slate-200 bg-white px-4 py-3 shrink-0">
-    <div class="flex gap-2.5 max-w-3xl mx-auto">
-      <input id="input" type="text"
-        class="flex-1 border border-slate-300 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-shadow"
-        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-        placeholder="输入问题，按 Enter 发送…" 
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}" />
-      <button onclick="send()" id="send-btn"
+    <div class="flex gap-2.5 max-w-3xl mx-auto items-end">
+      <textarea id="chat-input" rows="1"
+        placeholder="输入问题，按 Enter 发送…" maxlength="5000"
+        oninput="autoResize(this)"
+        onkeydown="handleKeydown(event, this)"></textarea>
+      <button onclick="sendNow()" id="send-btn"
         class="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white w-11 h-11 rounded-2xl flex items-center justify-center text-lg transition-colors shrink-0">
         ↑
       </button>
@@ -95,338 +110,270 @@
 
     let ws = null;
     let connected = false;
+    let isSending = false;
 
     const messagesEl = document.getElementById('messages');
-    const inputEl = document.getElementById('input');
+    const inputEl = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
     const statusDot = document.getElementById('status-dot');
     const statusText = document.getElementById('status-text');
     const typingIndicator = document.getElementById('typing-indicator');
 
-    function setStatus(state, text) {
-      const colors = { connecting: 'bg-yellow-400', connected: 'bg-green-400', error: 'bg-red-400' };
-      statusDot.className = 'w-2 h-2 rounded-full transition-colors ' + (colors[state] || 'bg-gray-400');
-      statusText.textContent = text;
+    // Auto-resize textarea height up to ~5 lines
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+      el.style.overflowY = el.scrollHeight > 120 ? 'auto' : 'hidden';
     }
 
-    function scrollBottom() {
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+    // Enter = send (no shift-enter for newline in single-line mode)
+    function handleKeydown(e, el) {
+      if (e.key !== 'Enter' || e.shiftKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      sendNow();
     }
 
-    function renderMarkdown(text) {
-      // Configure marked
-      if (typeof marked !== 'undefined') {
-        marked.setOptions({ breaks: true, gfm: true });
-        return marked.parse(text);
-      }
-      // Fallback: escape and convert basic patterns
-      return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/`(.+?)`/g, '<code>$1</code>')
-        .replace(/\n/g, '<br>');
-    }
-
-    function addMsg(role, html, fadeIn) {
-      const isUser = role === 'user';
-      const div = document.createElement('div');
-      div.className = `msg-${role} chat-bubble ${isUser ? 'bg-slate-800 text-white' : 'bg-white text-slate-700'} ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'} p-4 shadow-sm ${isUser ? 'border-none' : 'border border-slate-100'} text-sm leading-relaxed ${fadeIn ? 'fade-in' : ''}`;
-      if (isUser) {
-        div.textContent = html;
-      } else {
-        div.innerHTML = `<div class="md-content">${html}</div>`;
-      }
-      messagesEl.appendChild(div);
-      scrollBottom();
-    }
-
-    function showTyping() { typingIndicator.classList.remove('hidden'); scrollBottom(); }
-    function hideTyping() { typingIndicator.classList.add('hidden'); }
-
-    // Returns true if text looks like internal thinking/reasoning that should be skipped
-    function isThinkingText(text) {
-      if (!text || typeof text !== 'string') return true;
-      const t = text.trim();
-      // Short common filler patterns
-      if (/^(好的|好的，|嗯|嗯嗯|收到|明白|了解)[。.]?$/.test(t)) return true;
-      if (t.length < 8 && /^(好的|嗯|收到)$/.test(t)) return true;
-      // English reasoning patterns
-      if (/^This is a/.test(t)) return true;
-      if (/According to SOUL/i.test(t)) return true;
-      if (/^Let me (craft|think|figure|check)/i.test(t)) return true;
-      if (/^I should not output/i.test(t)) return true;
-      if (/^I should (just |only )?give? the/i.test(t)) return true;
-      if (/^I (shouldn't|can't|cannot) (output|show|display)/i.test(t)) return true;
-      if (/^My response (should|will|shall)/i.test(t)) return true;
-      if (/^The (user|human|person)/i.test(t)) return true;
-      if (/^Let me provide? the/i.test(t)) return true;
-      if (/^Here's (the |a )?(response|answer|reply)/i.test(t)) return true;
-      if (/^Sure[,,]/.test(t)) return true;
-      if (/^Of course[,,]/.test(t)) return true;
-      if (t.startsWith('[Thinking')) return true;
-      return false;
-    }
-
-    // Patterns that mark the START of thinking/reasoning content (to discard)
-    const THINK_PATTERNS = [
-      /^根据 SOUL/i,
-      /^Based on SOUL/i,
-      /^According to SOUL/i,
+    // ---- Thinking filter ----
+    const THINK_PATTERNS_BLOCKLIST = [
+      /^根据 SOUL/i, /^Based on SOUL/i, /^According to SOUL/i,
       /^This is a (greeting|response|message)/i,
       /^I should (give|provide|output|show)/i,
       /^Let me (give|provide|craft|write|create|check)/i,
-      /^My response/i,
-      /^The user says/i,
+      /^My response/i, /^The user says/i,
       /^I (shouldn't|cannot|can not)/i,
       /^{{.*}}/,
       /^"[^"]+"$/,
-      // Chinese patterns for AI reasoning
       /^根据[\s\S]*?应该/i,
       /^我应该(不)?(输出|给出|显示)/i,
       /^让我(给|提供|写|创建)/i,
       /^[A-Za-z\s]{5,}$/,
     ];
 
-    // Patterns that signal the START of real user-facing content
-    // These indicate the thinking phase is over
     const REAL_CONTENT_SIGNALS = [
-      /^你好[，,。!！?？]/,
-      /^您好[，,。!！?？]/,
-      /^[👋😊🎉✨💡]/,
-      /^你好！/,
-      /^嗯[，,。!！?？]/,
-      /^对[，,。!！?]/,
-      /^是的[，,。!！?]/,
-      /^没错[，,。!！?]/,
+      /^你好[，,。!！?？]/, /^您好[，,。!！?？]/,
+      /^[👋😊🎉✨💡]/, /^嗯[，,。!！?？]/,
+      /^对[，,。!！?]/, /^是的[，,。!！?]/,
       /^[A-Za-z]{1,3}[.。]?\s+[\u4e00-\u9fa5]/,
     ];
 
-    function isLikelyThinking(text) {
+    function isThinkingText(text) {
       if (!text || text.length < 5) return false;
-      // Check if it matches thinking patterns
-      for (const pat of THINK_PATTERNS) {
-        if (pat.test(text)) return true;
+      for (const p of THINK_PATTERNS_BLOCKLIST) {
+        if (p.test(text.trim())) return true;
       }
       return false;
     }
 
-    function detectRealContentStart(text) {
-      for (const sig of REAL_CONTENT_SIGNALS) {
-        if (sig.test(text)) return true;
-      }
-      // Real content usually has these characteristics:
-      // - Starts with a greeting or direct response
-      // - Contains emoji
-      // - Has short sentences with Chinese punctuation
-      if (/^[\u4e00-\u9fa5]{1,3}[，,。!！?？]/.test(text)) return true;
-      if (/[😊🎉✨💡👍]/.test(text)) return true;
+    function looksLikeRealContent(text) {
+      const t = text.trim();
+      for (const s of REAL_CONTENT_SIGNALS) { if (s.test(t)) return true; }
+      if (/^[\u4e00-\u9fa5]{1,3}[，,。!！?？]/.test(t)) return true;
+      if (/[😊🎉✨💡👍]/.test(t)) return true;
       return false;
     }
 
-    function stripThinkingContent(text) {
-      if (!text) return '';
-      let result = text;
-
-      // Strategy 1: If text starts with a clear thinking pattern, find where real content starts
-      const lines = result.split('\n');
-      const cleanLines = [];
+    function filterThinking(raw) {
+      if (!raw) return '';
+      const lines = raw.split('\n');
+      const clean = [];
       let reachedReal = false;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const trimmed = line.trim();
-
+      for (const line of lines) {
+        const t = line.trim();
         if (!reachedReal) {
-          // Still in thinking phase — check if this line is thinking
-          const isThink = isLikelyThinking(trimmed) ||
-            (/^[A-Za-z\s"'\[\]{}]+$/.test(trimmed) && trimmed.length > 10) ||
-            (/根据.*(SOUL|AGENTS)/.test(trimmed)) ||
-            (trimmed.startsWith('I ') && /[A-Z][a-z]+/.test(trimmed) && !/^(I am|I\'m|I have)/.test(trimmed));
-
-          if (!isThink && trimmed.length > 0) {
-            // First line that doesn't look like thinking — check if it looks like real content
-            if (detectRealContentStart(trimmed) || /[\u4e00-\u9fa5]{4,}/.test(trimmed)) {
-              reachedReal = true;
-            }
-          }
-          // Skip this line regardless, don't add to cleanLines yet
-          continue;
-        }
-        cleanLines.push(line);
-      }
-
-      if (reachedReal && cleanLines.length > 0) {
-        result = cleanLines.join('\n');
-      }
-
-      // Strategy 2: Look for the transition from thinking to real content
-      // Thinking ends with a Chinese sentence, then a newline, then real content starts
-      // Pattern: Chinese sentence ending in 。 or ！ or ？ followed by newline + real content
-      if (!reachedReal) {
-        const transitionMatch = result.match(/([\u4e00-\u9fa5][。！？][\n\r]+)([\u4e00-\u9fa5])/);
-        if (transitionMatch && transitionMatch.index !== undefined) {
-          const after = result.substring(transitionMatch.index + transitionMatch[1].length);
-          if (detectRealContentStart(after.trim())) {
-            result = after;
+          if (!t) continue;
+          // Check if this line is thinking
+          const think = isThinkingText(t) ||
+            (/^[A-Za-z\s"'\[\]{}]+$/.test(t) && t.length > 10) ||
+            (/根据.*(SOUL|AGENTS)/.test(t)) ||
+            (t.startsWith('I ') && /[A-Z][a-z]+/.test(t) && !/^(I am|I\'m|I have)/.test(t));
+          if (!think && (looksLikeRealContent(t) || /[\u4e00-\u9fa5]{4,}/.test(t))) {
+            reachedReal = true;
+          } else {
+            continue; // skip thinking line
           }
         }
+        clean.push(line);
       }
-
-      return result;
+      return clean.join('\n').trim();
     }
 
-    // Streaming state
+    // ---- Markdown ----
+    function renderMarkdown(text) {
+      if (typeof marked !== 'undefined') {
+        marked.setOptions({ breaks: true, gfm: true });
+        return marked.parse(text);
+      }
+      return text
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`(.+?)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+    }
+
+    function addMsg(role, text, fadeIn) {
+      const isUser = role === 'user';
+      const div = document.createElement('div');
+      div.className = `msg-${role} chat-bubble ${isUser ? 'bg-slate-800 text-white' : 'bg-white text-slate-700'} ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'} p-4 shadow-sm ${isUser ? 'border-none' : 'border border-slate-100'} text-sm leading-relaxed ${fadeIn ? 'fade-in' : ''}`;
+      if (isUser) {
+        div.textContent = text;
+      } else {
+        div.innerHTML = `<div class="md-content">${text}</div>`;
+      }
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function setStatus(state, text) {
+      const colors = { connecting: 'bg-yellow-400', connected: 'bg-green-400', error: 'bg-red-400' };
+      statusDot.className = `w-2 h-2 rounded-full transition-colors ${colors[state] || 'bg-gray-400'}`;
+      statusText.textContent = text;
+    }
+
+    function showTyping() { typingIndicator.classList.remove('hidden'); messagesEl.scrollTop = messagesEl.scrollHeight; }
+    function hideTyping() { typingIndicator.classList.add('hidden'); }
+
+    // ---- Streaming ----
     let currentAiDiv = null;
     let currentText = '';
-    let hasRealContent = false;
+    let hasReal = false;
 
-    function startAiBubble() {
+    function startBubble() {
       hideTyping();
       showTyping();
       const div = document.createElement('div');
       div.className = 'msg-ai chat-bubble bg-white text-slate-700 rounded-2xl rounded-tl-sm p-4 shadow-sm border border-slate-100 text-sm leading-relaxed fade-in';
-      div.innerHTML = '<div class="md-content text-slate-400">思考中…</div>';
+      div.innerHTML = '<div class="md-content" style="color:#94a3b8">思考中…</div>';
       messagesEl.appendChild(div);
       currentAiDiv = div;
       currentText = '';
-      hasRealContent = false;
-      scrollBottom();
+      hasReal = false;
     }
 
-    function appendToAiBubble(delta) {
+    function appendBubble(delta) {
       if (!currentAiDiv) return;
       currentText += delta;
-
-      // Strip thinking content from accumulated text
-      currentText = stripThinkingContent(currentText);
-
-      const clean = currentText.trim();
-
-      // Don't render unless we have substantial real content (avoid showing thinking as content)
-      // Require at least 5 meaningful characters
-      if (clean.length < 5) return;
-
-      // Check if this looks like real content vs. thinking
-      if (isLikelyThinking(clean)) return;
-
-      if (!hasRealContent) {
-        hasRealContent = true;
+      const cleaned = filterThinking(currentText).trim();
+      // Don't show tiny or thinking-only content
+      if (cleaned.length < 4) return;
+      if (isThinkingText(cleaned)) return;
+      if (!hasReal) {
+        hasReal = true;
         hideTyping();
       }
-
       const contentDiv = currentAiDiv.querySelector('.md-content');
-      if (contentDiv) contentDiv.innerHTML = renderMarkdown(clean);
-      scrollBottom();
+      if (contentDiv) contentDiv.innerHTML = renderMarkdown(cleaned);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    function finalizeAiBubble() {
+    function finalizeBubble() {
       hideTyping();
-      if (!currentAiDiv) return '';
-      const content = stripThinkingContent(currentText).trim();
+      if (!currentAiDiv) return;
+      const content = filterThinking(currentText).trim();
       const contentDiv = currentAiDiv.querySelector('.md-content');
       if (contentDiv) contentDiv.innerHTML = content ? renderMarkdown(content) : '';
       if (!content) currentAiDiv.remove();
       currentAiDiv = null;
-      return content;
     }
 
     function handleMessage(data) {
       if (typeof data !== 'object' || data === null) return;
-
       if (data.event === 'connect.challenge') return;
 
-      if ((data.type === 'res' && data.ok && data.payload?.type === 'hello-ok') ||
-          (data.event === 'hello-ok')) {
+      // hello-ok
+      if ((data.type === 'res' && data.ok && data.payload?.type === 'hello-ok') || data.event === 'hello-ok') {
         connected = true;
         setStatus('connected', '在线');
         return;
       }
 
+      // Error
       if (data.type === 'res' && !data.ok) {
-        finalizeAiBubble('');
+        finalizeBubble();
         addMsg('ai', '出错了：' + (data.error?.message || '未知错误'), true);
+        enableSend();
         return;
       }
 
-      if (data.type === 'event') {
-        const evt = data.event;
-        const p = data.payload || {};
-        const d = p.data || {};
+      if (data.type !== 'event') return;
+      const p = data.payload || {};
+      const d = p.data || {};
 
-        if (p.state === 'final' || p.state === 'complete') {
-          const content = finalizeAiBubble().trim();
-          if (content) addMsg('ai', content, true);
-          currentText = '';
-          hasRealContent = false;
-          return;
-        }
-
-        if (p.state === 'delta' || p.state === 'streaming') {
-          if (!currentAiDiv) startAiBubble();
-          const delta = d.delta || d.text || '';
-          if (delta) appendToAiBubble(delta);
-          return;
-        }
-
-        // Non-streaming events
-        let content = '';
-        if (evt === 'chat.message') content = p.content || p.text || '';
-        else if (evt === 'agent') content = d.content || d.text || '';
-        if (!content) return;
-        content = stripThinkingContent(content).trim();
-        if (!content) return;
-        addMsg('ai', content, true);
+      if (p.state === 'final' || p.state === 'complete') {
+        finalizeBubble();
+        const content = filterThinking(currentText).trim();
+        if (content) addMsg('ai', content, true);
+        currentText = '';
+        hasReal = false;
+        enableSend();
+        return;
       }
+
+      if (p.state === 'delta' || p.state === 'streaming') {
+        if (!currentAiDiv) startBubble();
+        const delta = d.delta || d.text || '';
+        if (delta) appendBubble(delta);
+        return;
+      }
+
+      // Non-streaming events
+      let content = (p.content || p.text || d.content || d.text || '').trim();
+      if (!content) return;
+      content = filterThinking(content);
+      if (!content) return;
+      addMsg('ai', content, true);
+      enableSend();
     }
 
     function connect() {
       setStatus('connecting', '连接中…');
       ws = new WebSocket(GATEWAY_URL);
-
       ws.onopen = () => {};
-
-      ws.onmessage = (evt) => {
-        let data;
-        try { data = JSON.parse(evt.data); } catch { return; }
-        handleMessage(data);
+      ws.onmessage = (e) => {
+        try { handleMessage(JSON.parse(e.data)); } catch {}
       };
-
       ws.onerror = () => setStatus('error', '连接失败');
-
       ws.onclose = () => {
         connected = false;
         setStatus('error', '已断开');
+        enableSend();
         setTimeout(connect, 4000);
       };
     }
 
-    let inputBuffer = ''; // Separate buffer for send text - avoids DOM timing issues
-
-    function send() {
-      // Capture value immediately and clear DOM in same synchronous block
-      const text = inputEl.value;
-      const toSend = text.trim();
-      // Clear DOM immediately, then use our captured variable
-      inputEl.value = '';
-      inputEl.blur();
-      // Yield to browser event loop, then focus back
-      setTimeout(() => { inputEl.focus(); }, 10);
-      if (!toSend) return;
-      addMsg('user', toSend, true);
+    function disableSend() {
       sendBtn.classList.add('opacity-60', 'cursor-not-allowed');
       sendBtn.disabled = true;
+      isSending = true;
+    }
+
+    function enableSend() {
+      sendBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+      sendBtn.disabled = false;
+      isSending = false;
+    }
+
+    function sendNow() {
+      if (isSending) return;
+      const raw = inputEl.value;
+      const text = raw.trim();
+      // Clear input FIRST, synchronously
+      inputEl.value = '';
+      autoResize(inputEl);
+      inputEl.blur();
+      setTimeout(() => inputEl.focus(), 20);
+      if (!text) return;
+      disableSend();
+      addMsg('user', text, true);
       hideTyping();
 
       if (ws && ws.readyState === WebSocket.OPEN) {
         showTyping();
-        ws.send(JSON.stringify({ content: toSend }));
+        ws.send(JSON.stringify({ content: text }));
       } else {
         addMsg('ai', '还未连接，请稍候…', true);
-        sendBtn.classList.remove('opacity-60', 'cursor-not-allowed');
-        sendBtn.disabled = false;
+        enableSend();
       }
     }
 
