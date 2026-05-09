@@ -219,46 +219,53 @@
     // Streaming state
     let currentAiDiv = null;
     let currentText = '';
-    let thinkingPhase = false;
+    let hasRealContent = false;
 
     function startAiBubble() {
       hideTyping();
+      showTyping();
       const div = document.createElement('div');
       div.className = 'msg-ai chat-bubble bg-white text-slate-700 rounded-2xl rounded-tl-sm p-4 shadow-sm border border-slate-100 text-sm leading-relaxed fade-in';
       div.innerHTML = '<div class="md-content text-slate-400">思考中…</div>';
       messagesEl.appendChild(div);
       currentAiDiv = div;
       currentText = '';
-      thinkingPhase = true;
+      hasRealContent = false;
       scrollBottom();
     }
 
     function appendToAiBubble(delta) {
       if (!currentAiDiv) return;
       currentText += delta;
+      // Strip thinking and check if we have real content
       const clean = stripThinkingPrefix(currentText).trim();
       const contentDiv = currentAiDiv.querySelector('.md-content');
-      if (contentDiv) {
-        contentDiv.innerHTML = clean ? renderMarkdown(clean) : '<span class="text-slate-400">思考中…</span>';
+
+      // Real content = has 3+ consecutive Chinese or Latin chars AND not just thinking patterns
+      const isReal = clean.length > 0 && !isThinkingText(clean) && /[\u4e00-\u9fa5a-zA-Z]{3,}/.test(clean);
+
+      if (!isReal) return; // Still thinking — don't render anything
+
+      if (!hasRealContent) {
+        // First real content — hide typing indicator
+        hasRealContent = true;
+        hideTyping();
       }
+
+      if (contentDiv) contentDiv.innerHTML = renderMarkdown(clean);
       scrollBottom();
     }
 
-    function finalizeAiBubble(finalText) {
+    function finalizeAiBubble() {
       hideTyping();
       if (!currentAiDiv) return;
-      let content = finalText || currentText;
-      content = stripThinkingPrefix(content).trim();
+      const content = stripThinkingPrefix(currentText).trim();
       const contentDiv = currentAiDiv.querySelector('.md-content');
-      if (contentDiv) {
-        contentDiv.innerHTML = content ? renderMarkdown(content) : '';
-      }
-      if (!content && currentAiDiv) {
-        currentAiDiv.remove();
-      }
+      if (contentDiv) contentDiv.innerHTML = content ? renderMarkdown(content) : '';
+      if (!content) currentAiDiv.remove();
       currentAiDiv = null;
       currentText = '';
-      thinkingPhase = false;
+      hasRealContent = false;
     }
 
     function handleMessage(data) {
@@ -302,22 +309,8 @@
 
         if (p.state === 'delta' || p.state === 'streaming') {
           if (!currentAiDiv) startAiBubble();
-
           const delta = d.delta || d.text || '';
-
-          if (d.replace === true || thinkingPhase) {
-            if (thinkingPhase && currentText) {
-              const clean = stripThinkingPrefix(currentText).trim();
-              currentText = clean ? clean + delta : delta;
-              thinkingPhase = false;
-            } else {
-              currentText = delta;
-            }
-            appendToAiBubble('');
-          } else {
-            currentText += delta;
-            appendToAiBubble('');
-          }
+          if (delta) appendToAiBubble(delta);
           return;
         }
 
