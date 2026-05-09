@@ -149,33 +149,71 @@
     function isThinkingText(text) {
       if (!text || typeof text !== 'string') return true;
       const t = text.trim();
-      if (t.startsWith('The user said')) return true;
-      if (t.startsWith('用户发来了')) return true;
+      // Short common filler patterns
+      if (/^(好的|好的，|嗯|嗯嗯|收到|明白|了解)[。.]?$/.test(t)) return true;
+      if (t.length < 8 && /^(好的|嗯|收到)$/.test(t)) return true;
+      // English reasoning patterns
+      if (/^This is a/.test(t)) return true;
+      if (/According to SOUL/i.test(t)) return true;
+      if (/^Let me (craft|think|figure|check)/i.test(t)) return true;
+      if (/^I should not output/i.test(t)) return true;
+      if (/^I should (just |only )?give? the/i.test(t)) return true;
+      if (/^I (shouldn't|can't|cannot) (output|show|display)/i.test(t)) return true;
+      if (/^My response (should|will|shall)/i.test(t)) return true;
+      if (/^The (user|human|person)/i.test(t)) return true;
+      if (/^Let me provide? the/i.test(t)) return true;
+      if (/^Here's (the |a )?(response|answer|reply)/i.test(t)) return true;
+      if (/^Sure[,,]/.test(t)) return true;
+      if (/^Of course[,,]/.test(t)) return true;
       if (t.startsWith('[Thinking')) return true;
-      if (t.includes('根据 SOUL.md')) return true;
-      if (t.includes('According to SOUL.md')) return true;
-      if (t.includes('我在想')) return true;
-      if (t.startsWith('I should') || t.startsWith('Let me')) return true;
-      if (t.startsWith('好的') && t.length < 10) return true; // common filler
       return false;
     }
 
     function stripThinkingPrefix(text) {
-      const patterns = [
-        /^The user said [^.。]+[.。]\s*/,
-        /^用户发来了[^.。]+[.。]\s*/,
-        /^\[Thinking[^\]]*\]\s*/,
-        /^根据 SOUL\.md[^.。]*[.。]\s*/,
-        /^According to SOUL\.md[^.。]*[.。]\s*/,
-        /^我在想[^.。]*[.。]\s*/,
-        /^I should [^.。]*[.。]\s*/,
-        /^Let me [^.。]*[.。]\s*/,
-      ];
+      // Remove ALL leading English thinking/reasoning blocks before Chinese content starts
+      // Pattern: any stretch of English text (with possible newlines) followed by Chinese
+      // This handles: "This is a greeting. According to SOUL.md...\n\n中文"
+      // Also handles: "According to SOUL.md. I should...\n\n中文"
+      // Remove leading English-only sentences/paragraphs until we hit Chinese or real content
+      const lines = text.split('\n');
+      let chineseStart = -1;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        // If this line has Chinese characters, this is where real content starts
+        if (/[\u4e00-\u9fa5]/.test(line)) {
+          chineseStart = i;
+          break;
+        }
+        // If line is empty but we already passed some English, check next
+        // Lines that are entirely English (no Chinese) and appear before Chinese content = thinking
+        if (/[a-zA-Z]/.test(line) && !/[\u4e00-\u9fa5]/.test(line)) {
+          // This line is pure English - it's likely thinking, skip it
+          continue;
+        }
+        // Empty line - keep looking
+        if (line === '') continue;
+      }
+      
       let result = text;
+      if (chineseStart > 0) {
+        // Remove all lines before the first Chinese line
+        result = lines.slice(chineseStart).join('\n');
+      }
+      
+      // Also strip remaining known thinking patterns in case they appear mid-text
+      const patterns = [
+        /^This is a[^\n]*\n{0,2}/i,
+        /^According to SOUL\.md[^\n]*\n{0,2}/gi,
+        /^I should not[^\n]*\n{0,2}/gi,
+        /^Let me[^\n]*\n{0,2}/gi,
+        /^I should[^\n]*\n{0,2}/gi,
+        /^[A-Z][a-z][^.。]*According to SOUL[^。]*[。]\s*/,
+        /^[A-Z][a-z][^.。]*This is a[^。]*[。]\s*/,
+      ];
       for (const pat of patterns) {
         result = result.replace(pat, '');
       }
-      return result;
+      return result.trim();
     }
 
     // Streaming state
