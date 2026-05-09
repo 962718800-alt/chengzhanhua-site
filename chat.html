@@ -236,19 +236,21 @@
 
     function appendToAiBubble(delta) {
       if (!currentAiDiv) return;
+
+      // Add delta to accumulated text
       currentText += delta;
 
-      // Strip thinking content from accumulated text (so it never accumulates or renders)
+      // Strip thinking content FIRST, so currentText only ever holds real content
       currentText = stripThinkingPrefix(currentText);
 
-      // Check if we have real content now
       const clean = currentText.trim();
+
+      // Real content check: 3+ meaningful chars, not a thinking pattern
       const isReal = clean.length > 0 && !isThinkingText(clean) && /[\u4e00-\u9fa5a-zA-Z]{3,}/.test(clean);
 
-      if (!isReal) return; // Still pure thinking — don't render anything
+      if (!isReal) return; // Pure thinking — buffer but don't render
 
       if (!hasRealContent) {
-        // First real content — hide typing indicator
         hasRealContent = true;
         hideTyping();
       }
@@ -261,13 +263,11 @@
     function finalizeAiBubble() {
       hideTyping();
       if (!currentAiDiv) return;
-      const content = stripThinkingPrefix(currentText).trim();
+      currentText = stripThinkingPrefix(currentText).trim();
       const contentDiv = currentAiDiv.querySelector('.md-content');
-      if (contentDiv) contentDiv.innerHTML = content ? renderMarkdown(content) : '';
-      if (!content) currentAiDiv.remove();
+      if (contentDiv) contentDiv.innerHTML = currentText ? renderMarkdown(currentText) : '';
+      if (!currentText) currentAiDiv.remove();
       currentAiDiv = null;
-      currentText = '';
-      hasRealContent = false;
     }
 
     function handleMessage(data) {
