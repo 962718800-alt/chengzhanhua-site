@@ -169,51 +169,112 @@
       return false;
     }
 
-    function stripThinkingPrefix(text) {
-      // Remove ALL leading English thinking/reasoning blocks before Chinese content starts
-      // Pattern: any stretch of English text (with possible newlines) followed by Chinese
-      // This handles: "This is a greeting. According to SOUL.md...\n\n中文"
-      // Also handles: "According to SOUL.md. I should...\n\n中文"
-      // Remove leading English-only sentences/paragraphs until we hit Chinese or real content
-      const lines = text.split('\n');
-      let chineseStart = -1;
+    // Patterns that mark the START of thinking/reasoning content (to discard)
+    const THINK_PATTERNS = [
+      /^根据 SOUL/i,
+      /^Based on SOUL/i,
+      /^According to SOUL/i,
+      /^This is a (greeting|response|message)/i,
+      /^I should (give|provide|output|show)/i,
+      /^Let me (give|provide|craft|write|create|check)/i,
+      /^My response/i,
+      /^The user says/i,
+      /^I (shouldn't|cannot|can not)/i,
+      /^{{.*}}/,
+      /^"[^"]+"$/,
+      // Chinese patterns for AI reasoning
+      /^根据[\s\S]*?应该/i,
+      /^我应该(不)?(输出|给出|显示)/i,
+      /^让我(给|提供|写|创建)/i,
+      /^[A-Za-z\s]{5,}$/,
+    ];
+
+    // Patterns that signal the START of real user-facing content
+    // These indicate the thinking phase is over
+    const REAL_CONTENT_SIGNALS = [
+      /^你好[，,。!！?？]/,
+      /^您好[，,。!！?？]/,
+      /^[👋😊🎉✨💡]/,
+      /^你好！/,
+      /^嗯[，,。!！?？]/,
+      /^对[，,。!！?]/,
+      /^是的[，,。!！?]/,
+      /^没错[，,。!！?]/,
+      /^[A-Za-z]{1,3}[.。]?\s+[\u4e00-\u9fa5]/,
+    ];
+
+    function isLikelyThinking(text) {
+      if (!text || text.length < 5) return false;
+      // Check if it matches thinking patterns
+      for (const pat of THINK_PATTERNS) {
+        if (pat.test(text)) return true;
+      }
+      return false;
+    }
+
+    function detectRealContentStart(text) {
+      for (const sig of REAL_CONTENT_SIGNALS) {
+        if (sig.test(text)) return true;
+      }
+      // Real content usually has these characteristics:
+      // - Starts with a greeting or direct response
+      // - Contains emoji
+      // - Has short sentences with Chinese punctuation
+      if (/^[\u4e00-\u9fa5]{1,3}[，,。!！?？]/.test(text)) return true;
+      if (/[😊🎉✨💡👍]/.test(text)) return true;
+      return false;
+    }
+
+    function stripThinkingContent(text) {
+      if (!text) return '';
+      let result = text;
+
+      // Strategy 1: If text starts with a clear thinking pattern, find where real content starts
+      const lines = result.split('\n');
+      const cleanLines = [];
+      let reachedReal = false;
+
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        // If this line has Chinese characters, this is where real content starts
-        if (/[\u4e00-\u9fa5]/.test(line)) {
-          chineseStart = i;
-          break;
-        }
-        // If line is empty but we already passed some English, check next
-        // Lines that are entirely English (no Chinese) and appear before Chinese content = thinking
-        if (/[a-zA-Z]/.test(line) && !/[\u4e00-\u9fa5]/.test(line)) {
-          // This line is pure English - it's likely thinking, skip it
+        const line = lines[i];
+        const trimmed = line.trim();
+
+        if (!reachedReal) {
+          // Still in thinking phase — check if this line is thinking
+          const isThink = isLikelyThinking(trimmed) ||
+            (/^[A-Za-z\s"'\[\]{}]+$/.test(trimmed) && trimmed.length > 10) ||
+            (/根据.*(SOUL|AGENTS)/.test(trimmed)) ||
+            (trimmed.startsWith('I ') && /[A-Z][a-z]+/.test(trimmed) && !/^(I am|I\'m|I have)/.test(trimmed));
+
+          if (!isThink && trimmed.length > 0) {
+            // First line that doesn't look like thinking — check if it looks like real content
+            if (detectRealContentStart(trimmed) || /[\u4e00-\u9fa5]{4,}/.test(trimmed)) {
+              reachedReal = true;
+            }
+          }
+          // Skip this line regardless, don't add to cleanLines yet
           continue;
         }
-        // Empty line - keep looking
-        if (line === '') continue;
+        cleanLines.push(line);
       }
-      
-      let result = text;
-      if (chineseStart > 0) {
-        // Remove all lines before the first Chinese line
-        result = lines.slice(chineseStart).join('\n');
+
+      if (reachedReal && cleanLines.length > 0) {
+        result = cleanLines.join('\n');
       }
-      
-      // Also strip remaining known thinking patterns in case they appear mid-text
-      const patterns = [
-        /^This is a[^\n]*\n{0,2}/i,
-        /^According to SOUL\.md[^\n]*\n{0,2}/gi,
-        /^I should not[^\n]*\n{0,2}/gi,
-        /^Let me[^\n]*\n{0,2}/gi,
-        /^I should[^\n]*\n{0,2}/gi,
-        /^[A-Z][a-z][^.。]*According to SOUL[^。]*[。]\s*/,
-        /^[A-Z][a-z][^.。]*This is a[^。]*[。]\s*/,
-      ];
-      for (const pat of patterns) {
-        result = result.replace(pat, '');
+
+      // Strategy 2: Look for the transition from thinking to real content
+      // Thinking ends with a Chinese sentence, then a newline, then real content starts
+      // Pattern: Chinese sentence ending in 。 or ！ or ？ followed by newline + real content
+      if (!reachedReal) {
+        const transitionMatch = result.match(/([\u4e00-\u9fa5][。！？][\n\r]+)([\u4e00-\u9fa5])/);
+        if (transitionMatch && transitionMatch.index !== undefined) {
+          const after = result.substring(transitionMatch.index + transitionMatch[1].length);
+          if (detectRealContentStart(after.trim())) {
+            result = after;
+          }
+        }
       }
-      return result.trim();
+
+      return result;
     }
 
     // Streaming state
@@ -236,19 +297,19 @@
 
     function appendToAiBubble(delta) {
       if (!currentAiDiv) return;
-
-      // Add delta to accumulated text
       currentText += delta;
 
-      // Strip thinking content FIRST, so currentText only ever holds real content
-      currentText = stripThinkingPrefix(currentText);
+      // Strip thinking content from accumulated text
+      currentText = stripThinkingContent(currentText);
 
       const clean = currentText.trim();
 
-      // Real content check: 3+ meaningful chars, not a thinking pattern
-      const isReal = clean.length > 0 && !isThinkingText(clean) && /[\u4e00-\u9fa5a-zA-Z]{3,}/.test(clean);
+      // Don't render unless we have substantial real content (avoid showing thinking as content)
+      // Require at least 5 meaningful characters
+      if (clean.length < 5) return;
 
-      if (!isReal) return; // Pure thinking — buffer but don't render
+      // Check if this looks like real content vs. thinking
+      if (isLikelyThinking(clean)) return;
 
       if (!hasRealContent) {
         hasRealContent = true;
@@ -263,7 +324,7 @@
     function finalizeAiBubble() {
       hideTyping();
       if (!currentAiDiv) return '';
-      const content = stripThinkingPrefix(currentText).trim();
+      const content = stripThinkingContent(currentText).trim();
       const contentDiv = currentAiDiv.querySelector('.md-content');
       if (contentDiv) contentDiv.innerHTML = content ? renderMarkdown(content) : '';
       if (!content) currentAiDiv.remove();
@@ -314,7 +375,7 @@
         if (evt === 'chat.message') content = p.content || p.text || '';
         else if (evt === 'agent') content = d.content || d.text || '';
         if (!content) return;
-        content = stripThinkingPrefix(content).trim();
+        content = stripThinkingContent(content).trim();
         if (!content) return;
         addMsg('ai', content, true);
       }
