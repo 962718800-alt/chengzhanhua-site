@@ -403,21 +403,26 @@
       };
     }
 
+    let inputBuffer = ''; // Separate buffer for send text - avoids DOM timing issues
+
     function send() {
-      const text = inputEl.value.trim();
-      // Synchronously clear immediately so browser can't re-populate
-      const saved = inputEl.value;
+      // Capture value immediately and clear DOM in same synchronous block
+      const text = inputEl.value;
+      const toSend = text.trim();
+      // Clear DOM immediately, then use our captured variable
       inputEl.value = '';
-      inputEl.blur(); // Remove focus to prevent any browser autocomplete overlay
-      if (!text) return;
-      addMsg('user', text, true);
+      inputEl.blur();
+      // Yield to browser event loop, then focus back
+      setTimeout(() => { inputEl.focus(); }, 10);
+      if (!toSend) return;
+      addMsg('user', toSend, true);
       sendBtn.classList.add('opacity-60', 'cursor-not-allowed');
       sendBtn.disabled = true;
       hideTyping();
 
       if (ws && ws.readyState === WebSocket.OPEN) {
         showTyping();
-        ws.send(JSON.stringify({ content: text }));
+        ws.send(JSON.stringify({ content: toSend }));
       } else {
         addMsg('ai', '还未连接，请稍候…', true);
         sendBtn.classList.remove('opacity-60', 'cursor-not-allowed');
